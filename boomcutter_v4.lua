@@ -8,35 +8,29 @@ if not st then
 	treenumber = 0
 	waitcnt = 0
 	energymode = 0
-	level_smelt = 160
-	level_power = 40
-	level_mithril = 0
+	level_smelt = 0
+	level_power = 1
 	level_gold = 10 * level_smelt
 	level_mese = 10 * level_smelt
 	level_diamond = 10 * level_smelt
-	mat1 = 'basic_machines:mithril_dust_66'
-	mat2 ='basic_machines:mitrhil_dust_33'
-	mat3 = 'moreores:mithril_ingot'
+	mat1 = 'basic_machines:gold_dust_66'
+	mat2 ='basic_machines:gold_dust_33'
+	mat3 = 'default:gold_ingot'
 	vertical_cnt = 0
 	levelcheck_cnt = 0
 	makeblocks = function()
 		result = false
-		if check_inventory.self('moreores:mithril_ingot 10','main') then
-			craft('moreores:mithril_block')
+		if check_inventory.self('default:gold_ingot 10','main') then
+			craft('default:goldblock',18)
 			result = true
-		else
-			if check_inventory.self('default:gold_ingot 10','main') then
-				craft('default:goldblock',20)
+		else 
+			if check_inventory.self('default:mese_crystal 10','main') then
+				craft('default:mese')
 				result = true
-			else 
-				if check_inventory.self('default:mese_crystal 10','main') then
-					craft('default:mese')
+			else
+				if check_inventory.self('default:diamond 10','main') then
+					craft('default:diamondblock',18)
 					result = true
-				else
-					if check_inventory.self('default:diamond 10','main') then
-						craft('default:diamondblock',18)
-						result = true
-					end
 				end
 			end
 		end
@@ -54,23 +48,9 @@ if not st then
 		end
 		return count
 	end
-	generate_power = function()
-		if level_power == 0 then
-			if check_inventory.self('default:sapling 99','main') then
-				machine.generate_power('default:sapling')
-			else
-				machine.generate_power('default:tree',level_power)
-			end
-		else
-			if not machine.generate_power('default:tree',level_power) then
-				machine.generate_power('default:tree')
-			end
-		end
-	end
 	check_level = function()
 		level_minimum = 8192
 		result = false
-		
 		 myCheck = string.format('default:goldblock %d',level_gold + 1)
 		if check_inventory.self(myCheck,'main') then
 			level_gold = level_gold + 1
@@ -109,17 +89,6 @@ if not st then
 				mat3 = 'default:diamond'
 			end
 		end
-		myCheck = string.format('moreores:mithril_block %d',level_mithril + 1)
-		if check_inventory.self(myCheck,'main') then
-			level_mithril = level_mithril + 1
-			result = true
-		end
-		if level_minimum > level_mithril then
-			-- level_minimum = level_mithril
-			mat1 = 'basic_machines:mithril_dust_66'
-			mat2 ='basic_machines:mithril_dust_33'
-			mat3 = 'moreores:mithril_ingot'
-		end
 		if (level_smelt + 1 ) * 10 <= level_minimum then
 			level_smelt = level_smelt + 1
 		end
@@ -131,6 +100,10 @@ if not st then
 	end
 else
 	cond = 0
+	currentEnergy = machine.energy()
+	if currentEnergy < 0.1 then
+		machine.generate_power('default:tree')
+	end
 	
 	if dir == -2 then
 	    if read_node.forward() == 'default:tree' then
@@ -311,25 +284,10 @@ else
 										else
 											move.up()
 											vertical_cnt = vertical_cnt + 1
-											node = read_node.forward()
-											if node == 'default:tree' then
-												if read_node.up() == 'air' and read_node.up()  ~= 'default:ladder_wood' and read_node.up()  ~= 'default:ladder_sappling' then
-													operationdir = 2
-												else
-													move.up()
-													vertical_cnt = vertical_cnt + 1
-													node = read_node.forward()
-													if node ~= 'default:tree' then
-														dir = 11
-													end
-												end
-											end
 										end
-									else
 										dir = 11
 									end
 								end
-							else
 								dir = 11
 							end
 						end
@@ -340,24 +298,20 @@ else
 					end
 				else
 					if dir == 11 then
-						if machine.energy() < 1 then
-							machine.generate_power('default:tree',level_power)
+						can_forward = true
+						if read_node.right() == 'default:tree' then
+							dig.right()
+							if read_node.left() == 'default:tree' then
+								can_forward = false
+							end
 						else
-							can_forward = true
-							if read_node.right() == 'default:tree' then
-								dig.right()
-								if read_node.left() == 'default:tree' then
-									can_forward = false
-								end
-							else
-								if read_node.left() == 'default:tree' then
-									dig.left()
-								end	
-							end
-							if can_forward then
-								move.forward()
-								dir = 12
-							end
+							if read_node.left() == 'default:tree' then
+								dig.left()
+							end	
+						end
+						if can_forward then
+							move.forward()
+							dir = 12
 						end
 					else
 						if dir == 12 then
@@ -369,134 +323,117 @@ else
 							dir = 13
 						else
 							if dir == 13 then
-								can_return = true
+								can_backward = true
+								can_fastbackward = true
 								if read_node.right() == 'default:tree' then
 									dig.right()
+									can_fastbackward = false
 									if read_node.left() == 'default:tree' then
-										can_return = false
+										can_backward = false
 									end
 								else
 									if read_node.left() == 'default:tree' then
 										dig.left()
+										can_fastbackward = false
 									end
 								end
-								if can_return then
+								if can_fastbackward then
+									move.backward()
+									move.backward()
 									move.down()
-									dir = 14
+									dir = -1
+								else
+									if can_backward then
+										move.backward()
+										dir = 14
+									end
 								end
 							else
 								if dir == 14 then
-									can_return = true
-									if read_node.right() == 'default:tree' then
-										dig.right()
-										if read_node.left() == 'default:tree' then
-											can_return = false
-										end
-									else
-										if read_node.left() == 'default:tree' then
-											dig.left()
-										end
-									end
-									if can_return then
-										dir = 15
-									end
+									move.backward()
+									move.down()
+									dir = -1
+									vertical_cnt = 0
 								else
 									if dir == 15 then
-										if read_node.backward() == 'default:tree' then
-											dig.backward()
-										end
-										move.backward()
-										move.backward()
-										dir = 16
+										vertical_cnt = 0
+										dir = -1
 									else
-										if dir == 16 then
-											can_return = true
-											if read_node.right() == 'default:tree' then
-												dig.right()
-												if read_node.left() == 'default:tree' then
-													can_return = false
+										if dir == 20 then
+											if read_node.forward() ~= 'default:sapling' and not check_inventory.self('default:tree 240','main') then
+												pickup(8)
+												if treenumber == 2 then
+													levelcheck_cnt = 10
+													operationdir = 15
 												end
+												dir = 1
 											else
-												if read_node.left() == 'default:tree' then
-													dig.left()
-												end
-											end
-											if can_return then
-												vertical_cnt = 0
-												dir = -1
-											end
-										else
-											if dir == 20 then
-												if read_node.forward() ~= 'default:sapling' and not check_inventory.self('default:tree 240','main') then
-													pickup(8)
-													if treenumber == 2 then
-														levelcheck_cnt = 10
-														operationdir = 15
+												if waitcnt <= 0 then
+													energymode = 0
+												    pickup(8)
+													
+													if treenumber == 0 then
+														operationdir = 8
+														treenumber = 1
+													else
+														if treenumber == 1 then
+															operationdir = 8
+															treenumber = 2
+														else
+															if treenumber == 2 then
+																operationdir = 10
+																treenumber = 0
+															end
+														end
 													end
 													dir = 1
 												else
-													if waitcnt <= 0 then
-														energymode = 0
-														pickup(8)
-														
-														if treenumber == 0 then
-															operationdir = 8
-															treenumber = 1
-														else
-															if treenumber == 1 then
-																operationdir = 8
-																treenumber = 2
+													if not check_inventory.self('default:tree 200','main') then
+														waitcnt = waitcnt - 1
+													end
+													currentEnergy = machine.energy()
+													self.label(string.format('Energy: %1.2f Levels(%d, %d, %d, %d, %d)',currentEnergy,level_gold,level_mese,level_diamond,level_smelt,level_power))
+													
+													if currentEnergy > 20 then
+														if energymode == 0 and currentEnergy < 100 then
+															if currentEnergy < 80 then
+																energymode = 0
 															else
-																if treenumber == 2 then
-																	operationdir = 10
-																	treenumber = 0
+																energymode = 1
+															end
+															if level_power == 0 then
+																if check_inventory.self('default:sapling 99','main') then
+																	machine.generate_power('default:sapling')
+																else
+																	machine.generate_power('default:tree',level_power)
+																end
+															else
+																if not machine.generate_power('default:tree',level_power) then
+																	machine.generate_power('default:tree')
 																end
 															end
-														end
-														if not check_inventory.self('default:tree 240','main')  then
-															dir = 1
 														else
-															dir = 20
-															waitcnt = 20
-															machine.generate_power('default:tree',level_power)
-														end
-													else
-														waitcnt = waitcnt - 1
-														currentEnergy = machine.energy()
-														check_level()
-														self.label(string.format('Energy: %1.2f Levels(%d, %d, %d, %d, %d)',currentEnergy,level_gold,level_mese,level_diamond,level_smelt,level_power))
-														if currentEnergy > 20 then
-															
-															if energymode == 0 and currentEnergy < 100 then
-																if currentEnergy < 80 then
-																	energymode = 0
-																else
-																	energymode = 1
-																end
-																machine.generate_power('default:tree',level_power)
+															if check_inventory.self(mat1,'main') then
+																machine.smelt(mat1,level_smelt)
 															else
-																if check_inventory.self(mat1,'main') then
-																	machine.smelt(mat1,level_smelt)
+																if check_inventory.self(mat2,'main') then
+																	machine.smelt(mat2,level_smelt)
 																else
-																	if check_inventory.self(mat2,'main') then
-																		machine.smelt(mat2,level_smelt)
-																	else
-																		if check_inventory.self(mat3,'main') then
-																			machine.grind(mat3)
-																		else										
-																			pickup(8)
-																		end
+																	if check_inventory.self(mat3,'main') then
+																		machine.grind(mat3)
+																	else										
+																		pickup(8)
 																	end
 																end
 															end
-														else
-															if check_inventory.self('default:sapling 99','main') then
-																	machine.generate_power('default:sapling')
-															else
-																	machine.generate_power('default:tree',level_power)
-															end
-															waitcnt = waitcnt - 1
 														end
+													else
+														if check_inventory.self('default:sapling 99','main') then
+																machine.generate_power('default:sapling')
+														else
+																machine.generate_power('default:tree',level_power)
+														end
+														waitcnt = waitcnt - 1
 													end
 												end
 											end
